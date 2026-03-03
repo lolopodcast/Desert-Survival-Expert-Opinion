@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Desert Survival Expert Evaluation</title>
+  
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Babel for in-browser JSX compilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bcg: {
+              DEFAULT: '#00543D', // BCG Green
+              dark: '#003324',
+              light: '#E5F0EC',
+              darkbg: '#121212',
+              carddark: '#1E1E1E'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+    body { transition: background-color 0.3s, color 0.3s; }
+    
+    .infographic-bar {
+      transition: height 1s ease-out, width 1s ease-out;
+    }
+  </style>
+</head>
+<body class="bg-[#F8F9FA] text-gray-900 dark:bg-bcg-darkbg dark:text-gray-100 min-h-screen flex flex-col font-sans">
+  <div id="root" class="flex-grow flex flex-col"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // === Score Mapping ===
+    const SCORE_MAP_A = { 'a': 0, 'b': 1, 'c': 1, 'd': 1, 'e': 0, 'f': 1, 'g': 0, 'h': 0 };
+    const SCORE_MAP_B = { 'a': 4, 'b': 4, 'c': 3, 'd': 1, 'e': 3, 'f': 2 };
+
+    const SCORE_MAP_C = [
+      { group: { '1': 4, '2': 3, '3': 2, '4': 1 }, use: { 'a': 4, 'b': 1, 'c': 3, 'd': 3 } }, // 1
+      { group: { '1': 2, '2': 1, '3': 2, '4': 3 }, use: { 'a': 3, 'b': 3, 'c': 1, 'd': 0 } }, // 2
+      { group: { '1': 4, '2': 3, '3': 2, '4': 1 }, use: { 'a': 4, 'b': 2, 'c': 4, 'd': 1 } }, // 3
+      { group: { '1': 4, '2': 3, '3': 2, '4': 1 }, use: { 'a': 4, 'b': 4, 'c': 4, 'd': 1 } }, // 4
+      { group: { '1': 1, '2': 2, '3': 3, '4': 4 }, use: { 'a': 3, 'b': 4, 'c': 1, 'd': 3 } }, // 5
+      { group: { '1': 1, '2': 2, '3': 3, '4': 4 }, use: { 'a': 3, 'b': 4, 'c': 4, 'd': 1 } }, // 6
+      { group: { '1': 3, '2': 2, '3': 1, '4': 2 }, use: { 'a': 1, 'b': 4, 'c': 4, 'd': 4 } }, // 7
+      { group: { '1': 3, '2': 2, '3': 1, '4': 2 }, use: { 'a': 4, 'b': 1, 'c': 2, 'd': 2 } }, // 8
+      { group: { '1': 1, '2': 2, '3': 3, '4': 4 }, use: { 'a': 3, 'b': 4, 'c': 1, 'd': 4 } }, // 9
+      { group: { '1': 2, '2': 1, '3': 2, '4': 3 }, use: { 'a': 1, 'b': 2, 'c': 3, 'd': 4 } }, // 10
+      { group: { '1': 1, '2': 2, '3': 3, '4': 4 }, use: { 'a': 4, 'b': 4, 'c': 1, 'd': 2 } }, // 11
+      { group: { '1': 2, '2': 1, '3': 2, '4': 3 }, use: { 'a': 1, 'b': 3, 'c': 2, 'd': 1 } }, // 12
+      { group: { '1': 3, '2': 2, '3': 1, '4': 2 }, use: { 'a': 3, 'b': 3, 'c': 1, 'd': 3 } }, // 13
+      { group: { '1': 4, '2': 3, '3': 2, '4': 1 }, use: { 'a': 4, 'b': 4, 'c': 4, 'd': 1 } }, // 14
+      { group: { '1': 2, '2': 1, '3': 2, '4': 3 }, use: { 'a': 1, 'b': 4, 'c': 4, 'd': 3 } }, // 15
+      { group: { '1': 3, '2': 2, '3': 1, '4': 2 }, use: { 'a': 2, 'b': 2, 'c': 1, 'd': 0 } }, // 16
+    ];
+
+    // === CSV Utilities ===
+    const parseCSVLine = (str) => {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+        if (char === '"' && str[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current);
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current);
+      return result;
+    };
+
+    const serializeCSVRow = (row) => {
+      return row.map(cell => {
+        if (cell === null || cell === undefined) return '""';
+        const str = String(cell);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return `"${str}"`;
+      }).join(',');
+    };
+
+    // === Icons ===
+    const IconSun = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>;
+    const IconMoon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>;
+    const IconCalculator = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>;
+    const IconDownload = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>;
+    const IconLogo = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-bcg dark:text-bcg-light"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>;
+
+    const App = () => {
+      const [language, setLanguage] = useState('zh');
+      const [darkMode, setDarkMode] = useState(false);
+      
+      const [csvData, setCsvData] = useState(null);
+      const [processedCsvData, setProcessedCsvData] = useState(null);
+      const [scores, setScores] = useState({ Y: null, T: null });
+      const [studentInfo, setStudentInfo] = useState({});
+      const [error, setError] = useState(null);
+
+      useEffect(() => {
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setDarkMode(isDark);
+        if (isDark) document.documentElement.classList.add('dark');
+      }, []);
+
+      const toggleTheme = () => {
+        setDarkMode(!darkMode);
+        if (!darkMode) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      };
+
+      const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      const texts = {
+        zh: {
+          headerTitle: '顧問評量系統',
+          appTitle: '沙漠求生 專家意見評量',
+          uploadCsv: '匯入分析資料 (CSV)',
+          process: '執行計分運算',
+          exportCsv: '匯出分析報告',
+          studentInfo: '受測者資訊',
+          results: '評量總結報告',
+          scoreA: 'Part A (主要克服問題)',
+          scoreB: 'Part B (基本求生策略)',
+          scoreC: 'Part C (物品選擇運用)',
+          totalScore: '最終評分',
+          errorUpload: '資料解析失敗，請確認上傳了正確的 CSV 格式檔案。',
+          noData: '尚未載入任何評量資料',
+          individual: '個人決策 (Y)',
+          team: '團隊決策 (T)',
+          group: '組織/組別',
+          studentId: '識別碼/學號',
+          name: '受測者姓名',
+          preview: '資料結構預覽',
+          footerCopy: '© {year} All rights reserved. (for Educational Use only)',
+          hint: '系統提示：計算完成後，請點擊上方「匯出分析報告」下載包含完整計分細節的 CSV 檔案。',
+          scoreAnalysis: '得分結構分析',
+          maxScore: '理論滿分參考'
+        },
+        en: {
+          headerTitle: 'Consulting Evaluation',
+          appTitle: 'Desert Survival Expert Assessment',
+          uploadCsv: 'Import Data (CSV)',
+          process: 'Execute Scoring',
+          exportCsv: 'Export Report',
+          studentInfo: 'Subject Information',
+          results: 'Evaluation Summary',
+          scoreA: 'Part A (Key Challenges)',
+          scoreB: 'Part B (Basic Strategy)',
+          scoreC: 'Part C (Item Utilization)',
+          totalScore: 'Final Score',
+          errorUpload: 'Data parsing failed. Please ensure a valid CSV file is uploaded.',
+          noData: 'No evaluation data loaded.',
+          individual: 'Individual (Y)',
+          team: 'Team (T)',
+          group: 'Organization/Group',
+          studentId: 'ID/Student ID',
+          name: 'Subject Name',
+          preview: 'Data Structure Preview',
+          footerCopy: '© {year} All rights reserved. (for Educational Use only)',
+          hint: 'System Notice: Upon successful calculation, please click "Export Report" to download the complete scoring details in CSV format.',
+          scoreAnalysis: 'Score Structure Analysis',
+          maxScore: 'Theoretical Max Reference'
+        }
+      };
+
+      const t = texts[language];
+
+      const handleFileUpload = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const text = e.target.result;
+            const rows = text.split('\n').map(row => parseCSVLine(row.trim()));
+            
+            const info = {};
+            rows.slice(0, 5).forEach(row => {
+              if (row.length >= 2) {
+                 if (row[0].includes('組別') || row[0].includes('Group')) info.group = row[1];
+                 if (row[0].includes('學號') || row[0].includes('ID')) info.studentId = row[1];
+                 if (row[0].includes('姓名') || row[0].includes('Name')) info.name = row[1];
+              }
+            });
+
+            setStudentInfo(info);
+            setCsvData(rows);
+            setProcessedCsvData(null); 
+            setScores({ Y: null, T: null });
+            setError(null);
+          } catch (err) {
+            setError(t.errorUpload);
+            setCsvData(null);
+          }
+        };
+        reader.onerror = () => {
+          setError(t.errorUpload);
+        };
+        reader.readAsText(file);
+      };
+
+      const calculateScores = () => {
+        if (!csvData) return;
+
+        let currentSection = null;
+        let currentEntity = null; 
+        let hasTeamData = false;
+
+        const totals = {
+          Y: { A: 0, B: 0, C: 0 },
+          T: { A: 0, B: 0, C: 0 }
+        };
+
+        const newCsvData = csvData.map(row => {
+          if (!row || row.length === 0 || row[0] === '') return row;
+          const firstCol = row[0].trim();
+
+          if (firstCol.includes('個人 (Y)') || firstCol.includes('Individual (Y)')) {
+            currentEntity = 'Y';
+            return row;
+          } else if (firstCol.includes('團隊 (T)') || firstCol.includes('Team (T)')) {
+            currentEntity = 'T';
+            hasTeamData = true;
+            return row;
+          } 
+          
+          else if (firstCol.includes('A. 主要需克服的問題') || firstCol.includes('A. Key Challenges')) {
+            currentSection = 'A';
+            return [...row, '', language === 'zh' ? '專家得分' : 'Expert Score'];
+          } else if (firstCol.includes('B. 基本求生策略') || firstCol.includes('B. Basic Strategy')) {
+            currentSection = 'B';
+            return [...row, '', language === 'zh' ? '專家得分' : 'Expert Score'];
+          } else if (firstCol.includes('C. 物品選擇與運用') || firstCol.includes('C. Item Utilization')) {
+            currentSection = 'C';
+            return row; 
+          } else if (firstCol === '物品 (Items)') {
+            return [...row, 
+              language === 'zh' ? '選擇得分' : 'Group Score', 
+              language === 'zh' ? '運用得分' : 'Use Score', 
+              language === 'zh' ? '單項總分' : 'Item Total'
+            ];
+          }
+
+          if (currentEntity && currentSection && firstCol) {
+            if (currentSection === 'A' && /^[a-h]$/i.test(firstCol)) {
+              const val = firstCol.toLowerCase();
+              const score = SCORE_MAP_A[val] !== undefined ? SCORE_MAP_A[val] : 0;
+              totals[currentEntity].A += score;
+              return [...row, score];
+            } else if (currentSection === 'B' && /^[a-f]$/i.test(firstCol)) {
+              const val = firstCol.toLowerCase();
+              const score = SCORE_MAP_B[val] !== undefined ? SCORE_MAP_B[val] : 0;
+              totals[currentEntity].B += score;
+              return [...row, score];
+            } else if (currentSection === 'C') {
+              const match = firstCol.match(/^\((\d+)\)/);
+              if (match) {
+                const itemIdx = parseInt(match[1], 10) - 1; 
+                const groupStr = row[1] ? row[1].trim() : '';
+                const useStr = row[2] ? row[2].trim().toLowerCase() : '';
+
+                let gScore = 0;
+                let uScore = 0;
+
+                if (SCORE_MAP_C[itemIdx]) {
+                  gScore = SCORE_MAP_C[itemIdx].group[groupStr] || 0;
+                  uScore = SCORE_MAP_C[itemIdx].use[useStr] || 0;
+                }
+
+                const itemTotal = gScore * uScore;
+                totals[currentEntity].C += itemTotal;
+                return [...row, gScore, uScore, itemTotal];
+              }
+            }
+          }
+          return [...row];
+        });
+
+        totals.Y.total = (totals.Y.A + totals.Y.B) * totals.Y.C;
+        totals.T.total = (totals.T.A + totals.T.B) * totals.T.C;
+
+        newCsvData.push(['']);
+        newCsvData.push(['', language === 'zh' ? '--- 評量結果總結 ---' : '--- Evaluation Summary ---', '']);
+        newCsvData.push([language === 'zh' ? '項目' : 'Item', t.individual, t.team]);
+        newCsvData.push([t.scoreA, totals.Y.A, hasTeamData ? totals.T.A : 'N/A']);
+        newCsvData.push([t.scoreB, totals.Y.B, hasTeamData ? totals.T.B : 'N/A']);
+        newCsvData.push([t.scoreC, totals.Y.C, hasTeamData ? totals.T.C : 'N/A']);
+        newCsvData.push([t.totalScore, totals.Y.total, hasTeamData ? totals.T.total : 'N/A']);
+
+        setProcessedCsvData(newCsvData);
+        setScores({
+          Y: totals.Y,
+          T: hasTeamData ? totals.T : null
+        });
+      };
+
+      const handleExport = () => {
+        if (!processedCsvData) return;
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
+        csvContent += processedCsvData.map(serializeCSVRow).join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        const originalFileName = studentInfo.studentId ? `_${studentInfo.studentId}` : '';
+        link.setAttribute("download", `Evaluation_Report${originalFileName}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      // Helper for infographic bars
+      const getBarWidth = (score, max) => {
+        return `${Math.min(100, Math.max(0, (score / max) * 100))}%`;
+      };
+
+      return (
+        <div className="flex-grow flex flex-col font-sans">
+          {/* Header - Fixed & Clickable for scroll to top */}
+          <header 
+            className="h-16 flex-shrink-0 bg-white dark:bg-bcg-carddark border-b border-gray-200 dark:border-gray-800 px-6 flex justify-between items-center z-20 sticky top-0"
+          >
+            <div 
+              className="flex items-center gap-3 cursor-pointer group"
+              onClick={scrollToTop}
+              title="Scroll to top"
+            >
+              <div className="bg-bcg text-white p-1.5 rounded flex items-center justify-center group-hover:bg-bcg-dark transition-colors">
+                <IconLogo />
+              </div>
+              <div>
+                <h1 className="text-sm font-bold text-gray-900 dark:text-white leading-tight tracking-wider uppercase">{t.headerTitle}</h1>
+                <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-0.5">{t.appTitle}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setLanguage(lang => lang === 'zh' ? 'en' : 'zh')}
+                className="text-xs font-bold text-gray-500 hover:text-bcg dark:text-gray-400 dark:hover:text-white transition-colors uppercase tracking-widest"
+              >
+                {language === 'zh' ? 'EN' : '繁中'}
+              </button>
+              <div className="w-px h-4 bg-gray-300 dark:bg-gray-700"></div>
+              <button 
+                onClick={toggleTheme}
+                className="text-gray-500 hover:text-bcg dark:text-gray-400 dark:hover:text-white transition-colors"
+                aria-label="Toggle Theme"
+              >
+                {darkMode ? <IconSun /> : <IconMoon />}
+              </button>
+            </div>
+          </header>
+
+          {/* Main Content */}
+          <main className="flex-grow p-4 md:p-8 max-w-6xl mx-auto w-full">
+            
+            {/* Control Panel - Minimalist BCG Style */}
+            <div className="mb-8 border-b border-gray-200 dark:border-gray-800 pb-8">
+              <div className="flex flex-col md:flex-row gap-4 items-end">
+                <div className="flex-1 w-full relative">
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest">{t.uploadCsv}</label>
+                  <div className="relative group">
+                    <input 
+                      type="file" 
+                      accept=".csv"
+                      onChange={handleFileUpload}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    <div className="flex items-center px-4 h-10 bg-white dark:bg-bcg-carddark border border-gray-300 dark:border-gray-700 rounded transition-all group-hover:border-bcg dark:group-hover:border-bcg-light shadow-sm">
+                      <span className="text-sm text-gray-700 dark:text-gray-300 font-medium truncate">
+                        {csvData ? (language==='zh'?"重新選擇檔案...":"Select different file...") : (language==='zh'?"選擇 CSV 檔案...":"Choose CSV file...")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 w-full md:w-auto">
+                  <button 
+                    onClick={calculateScores}
+                    disabled={!csvData}
+                    className="flex-1 md:flex-none flex items-center justify-center px-6 h-10 bg-bcg hover:bg-bcg-dark text-white text-sm font-semibold rounded shadow-sm disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {t.process}
+                  </button>
+                  <button 
+                    onClick={handleExport}
+                    disabled={!processedCsvData}
+                    className="flex-1 md:flex-none flex items-center justify-center px-6 h-10 bg-white dark:bg-bcg-carddark border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm font-semibold rounded shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {t.exportCsv}
+                  </button>
+                </div>
+              </div>
+              {error && <div className="mt-4 p-3 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded">{error}</div>}
+            </div>
+
+            {/* Layout Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              
+              {/* Left Column: Info */}
+              <div className="lg:col-span-1 space-y-8">
+                {/* Subject Info Card */}
+                <div>
+                  <h2 className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-4 uppercase tracking-widest">{t.studentInfo}</h2>
+                  <div className="bg-white dark:bg-bcg-carddark border border-gray-200 dark:border-gray-800 rounded p-5 shadow-sm">
+                    {csvData ? (
+                      <div className="space-y-4">
+                        <div>
+                          <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block mb-0.5">{t.group}</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{studentInfo.group || '-'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block mb-0.5">{t.studentId}</span>
+                          <span className="text-sm font-mono text-gray-900 dark:text-white">{studentInfo.studentId || '-'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest block mb-0.5">{t.name}</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{studentInfo.name || '-'}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-400 dark:text-gray-600 italic py-4">{t.noData}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Results & Infographics */}
+              <div className="lg:col-span-2">
+                <h2 className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-4 uppercase tracking-widest">{t.results}</h2>
+                
+                {scores.Y ? (
+                  <div className="space-y-6">
+                    
+                    {/* Comparative Cards Container */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      
+                      {/* You (Y) Card */}
+                      <div className="bg-white dark:bg-bcg-carddark border border-gray-200 dark:border-gray-800 rounded p-6 shadow-sm flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 mb-6">
+                            <div className="w-3 h-3 bg-bcg rounded-sm"></div>
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">{t.individual}</h3>
+                          </div>
+                          
+                          <div className="space-y-4 text-sm mb-6">
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-500 dark:text-gray-400">Part A</span>
+                              <span className="font-mono font-medium text-gray-900 dark:text-gray-100">{scores.Y.A}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-500 dark:text-gray-400">Part B</span>
+                              <span className="font-mono font-medium text-gray-900 dark:text-gray-100">{scores.Y.B}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-500 dark:text-gray-400">Part C</span>
+                              <span className="font-mono font-medium text-gray-900 dark:text-gray-100">{scores.Y.C}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                          <span className="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">{t.totalScore}</span>
+                          <span className="text-4xl font-light text-bcg dark:text-bcg-light tracking-tight">{scores.Y.total.toLocaleString()}</span>
+                        </div>
+                      </div>
+
+                      {/* Team (T) Card */}
+                      {scores.T ? (
+                        <div className="bg-white dark:bg-bcg-carddark border border-gray-200 dark:border-gray-800 rounded p-6 shadow-sm flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 mb-6">
+                              <div className="w-3 h-3 bg-gray-800 dark:bg-gray-400 rounded-sm"></div>
+                              <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">{t.team}</h3>
+                            </div>
+                            
+                            <div className="space-y-4 text-sm mb-6">
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-500 dark:text-gray-400">Part A</span>
+                                <span className="font-mono font-medium text-gray-900 dark:text-gray-100">{scores.T.A}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-500 dark:text-gray-400">Part B</span>
+                                <span className="font-mono font-medium text-gray-900 dark:text-gray-100">{scores.T.B}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-500 dark:text-gray-400">Part C</span>
+                                <span className="font-mono font-medium text-gray-900 dark:text-gray-100">{scores.T.C}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                            <span className="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">{t.totalScore}</span>
+                            <span className="text-4xl font-light text-gray-900 dark:text-white tracking-tight">{scores.T.total.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      ) : (
+                         <div className="bg-gray-50 dark:bg-gray-900/50 border border-dashed border-gray-200 dark:border-gray-800 rounded p-6 flex items-center justify-center">
+                            <span className="text-xs font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest">No Team Data</span>
+                         </div>
+                      )}
+                    </div>
+
+                    {/* Infographic Analysis Section */}
+                    <div className="bg-white dark:bg-bcg-carddark border border-gray-200 dark:border-gray-800 rounded p-6 shadow-sm mt-6">
+                      <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-6">{t.scoreAnalysis}</h3>
+                      
+                      <div className="space-y-6">
+                        {/* Part A Comparison */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="font-medium text-gray-700 dark:text-gray-300">Part A (Max: ~4)</span>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] font-bold w-4 text-gray-400">Y</span>
+                              <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-bcg infographic-bar rounded-full" style={{width: getBarWidth(scores.Y.A, 4)}}></div>
+                              </div>
+                              <span className="text-xs font-mono w-4 text-right">{scores.Y.A}</span>
+                            </div>
+                            {scores.T && (
+                              <div className="flex items-center gap-3">
+                                <span className="text-[10px] font-bold w-4 text-gray-400">T</span>
+                                <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                  <div className="h-full bg-gray-800 dark:bg-gray-400 infographic-bar rounded-full" style={{width: getBarWidth(scores.T.A, 4)}}></div>
+                                </div>
+                                <span className="text-xs font-mono w-4 text-right">{scores.T.A}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Part B Comparison */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="font-medium text-gray-700 dark:text-gray-300">Part B (Max: ~4)</span>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] font-bold w-4 text-gray-400">Y</span>
+                              <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-bcg infographic-bar rounded-full" style={{width: getBarWidth(scores.Y.B, 4)}}></div>
+                              </div>
+                              <span className="text-xs font-mono w-4 text-right">{scores.Y.B}</span>
+                            </div>
+                            {scores.T && (
+                              <div className="flex items-center gap-3">
+                                <span className="text-[10px] font-bold w-4 text-gray-400">T</span>
+                                <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                  <div className="h-full bg-gray-800 dark:bg-gray-400 infographic-bar rounded-full" style={{width: getBarWidth(scores.T.B, 4)}}></div>
+                                </div>
+                                <span className="text-xs font-mono w-4 text-right">{scores.T.B}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Part C Comparison */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="font-medium text-gray-700 dark:text-gray-300">Part C (Item utilization cumulative)</span>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] font-bold w-4 text-gray-400">Y</span>
+                              <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-bcg infographic-bar rounded-full" style={{width: getBarWidth(scores.Y.C, 200)}}></div> {/* Assuming max around 200 for visualization */}
+                              </div>
+                              <span className="text-xs font-mono w-8 text-right">{scores.Y.C}</span>
+                            </div>
+                            {scores.T && (
+                              <div className="flex items-center gap-3">
+                                <span className="text-[10px] font-bold w-4 text-gray-400">T</span>
+                                <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                  <div className="h-full bg-gray-800 dark:bg-gray-400 infographic-bar rounded-full" style={{width: getBarWidth(scores.T.C, 200)}}></div>
+                                </div>
+                                <span className="text-xs font-mono w-8 text-right">{scores.T.C}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                ) : (
+                  <div className="bg-white dark:bg-bcg-carddark border border-gray-200 dark:border-gray-800 rounded p-12 shadow-sm flex items-center justify-center h-64">
+                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t.noData}</p>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </main>
+
+          {/* Footer - Half Header Height (h-8) */}
+          <footer className="h-8 flex-shrink-0 bg-white dark:bg-bcg-carddark border-t border-gray-200 dark:border-gray-800 px-6 flex justify-between items-center text-[10px] font-medium text-gray-400 dark:text-gray-500 tracking-wider transition-colors z-10">
+            <div>
+              {t.footerCopy.replace('{year}', new Date().getFullYear())} | {new Date().toISOString().split('T')[0]} ver.
+            </div>
+            <div>
+              <a href="https://www.ibs.ncnu.edu.tw/index.php/faculty/tenured-professor/299-smlo" target="_blank" rel="noopener noreferrer" className="hover:text-bcg dark:hover:text-bcg-light transition-colors uppercase">
+                Architect: Prof. Shihmin Lo
+              </a>
+            </div>
+          </footer>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
