@@ -118,34 +118,17 @@
     // === Icons ===
     const IconSun = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>;
     const IconMoon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>;
-    const IconCalculator = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>;
-    const IconDownload = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>;
     const IconLogo = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-bcg dark:text-bcg-light"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>;
+    const IconLock = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
 
-    const App = () => {
-      const [language, setLanguage] = useState('zh');
-      const [darkMode, setDarkMode] = useState(false);
-      
+
+    // === Main Evaluation Application ===
+    const EvaluationApp = ({ language, toggleTheme, darkMode, setLanguage }) => {
       const [csvData, setCsvData] = useState(null);
       const [processedCsvData, setProcessedCsvData] = useState(null);
       const [scores, setScores] = useState({ Y: null, T: null });
       const [studentInfo, setStudentInfo] = useState({});
       const [error, setError] = useState(null);
-
-      useEffect(() => {
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        setDarkMode(isDark);
-        if (isDark) document.documentElement.classList.add('dark');
-      }, []);
-
-      const toggleTheme = () => {
-        setDarkMode(!darkMode);
-        if (!darkMode) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-      };
 
       const scrollToTop = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -350,13 +333,12 @@
         document.body.removeChild(link);
       };
 
-      // Helper for infographic bars
       const getBarWidth = (score, max) => {
         return `${Math.min(100, Math.max(0, (score / max) * 100))}%`;
       };
 
       return (
-        <div className="flex-grow flex flex-col font-sans">
+        <div className="flex-grow flex flex-col font-sans fade-in">
           {/* Header - Fixed & Clickable for scroll to top */}
           <header 
             className="h-16 flex-shrink-0 bg-white dark:bg-bcg-carddark border-b border-gray-200 dark:border-gray-800 px-6 flex justify-between items-center z-20 sticky top-0"
@@ -396,7 +378,7 @@
           {/* Main Content */}
           <main className="flex-grow p-4 md:p-8 max-w-6xl mx-auto w-full">
             
-            {/* Control Panel - Minimalist BCG Style */}
+            {/* Control Panel */}
             <div className="mb-8 border-b border-gray-200 dark:border-gray-800 pb-8">
               <div className="flex flex-col md:flex-row gap-4 items-end">
                 <div className="flex-1 w-full relative">
@@ -441,7 +423,6 @@
               
               {/* Left Column: Info */}
               <div className="lg:col-span-1 space-y-8">
-                {/* Subject Info Card */}
                 <div>
                   <h2 className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-4 uppercase tracking-widest">{t.studentInfo}</h2>
                   <div className="bg-white dark:bg-bcg-carddark border border-gray-200 dark:border-gray-800 rounded p-5 shadow-sm">
@@ -474,7 +455,7 @@
                 {scores.Y ? (
                   <div className="space-y-6">
                     
-                    {/* Comparative Cards Container */}
+                    {/* Comparative Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       
                       {/* You (Y) Card */}
@@ -544,7 +525,7 @@
                       )}
                     </div>
 
-                    {/* Infographic Analysis Section */}
+                    {/* Infographics */}
                     <div className="bg-white dark:bg-bcg-carddark border border-gray-200 dark:border-gray-800 rounded p-6 shadow-sm mt-6">
                       <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-6">{t.scoreAnalysis}</h3>
                       
@@ -608,7 +589,7 @@
                             <div className="flex items-center gap-3">
                               <span className="text-[10px] font-bold w-4 text-gray-400">Y</span>
                               <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                                <div className="h-full bg-bcg infographic-bar rounded-full" style={{width: getBarWidth(scores.Y.C, 200)}}></div> {/* Assuming max around 200 for visualization */}
+                                <div className="h-full bg-bcg infographic-bar rounded-full" style={{width: getBarWidth(scores.Y.C, 200)}}></div>
                               </div>
                               <span className="text-xs font-mono w-8 text-right">{scores.Y.C}</span>
                             </div>
@@ -637,7 +618,7 @@
             </div>
           </main>
 
-          {/* Footer - Half Header Height (h-8) */}
+          {/* Footer */}
           <footer className="h-8 flex-shrink-0 bg-white dark:bg-bcg-carddark border-t border-gray-200 dark:border-gray-800 px-6 flex justify-between items-center text-[10px] font-medium text-gray-400 dark:text-gray-500 tracking-wider transition-colors z-10">
             <div>
               {t.footerCopy.replace('{year}', new Date().getFullYear())} | {new Date().toISOString().split('T')[0]} ver.
@@ -650,6 +631,96 @@
           </footer>
         </div>
       );
+    };
+
+    // === Root Component with Auth State ===
+    const App = () => {
+      const [isAuthenticated, setIsAuthenticated] = useState(false);
+      const [password, setPassword] = useState('');
+      const [error, setError] = useState('');
+      const [language, setLanguage] = useState('zh');
+      const [darkMode, setDarkMode] = useState(false);
+
+      const t = {
+        zh: { title: '顧問評量系統登入', placeholder: '請輸入通行碼', submit: '進入系統', error: '通行碼錯誤' },
+        en: { title: 'Consulting System Login', placeholder: 'Enter Passcode', submit: 'Enter', error: 'Invalid Passcode' }
+      };
+
+      useEffect(() => {
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setDarkMode(isDark);
+        if (isDark) document.documentElement.classList.add('dark');
+      }, []);
+
+      const toggleTheme = () => {
+        setDarkMode(!darkMode);
+        if (!darkMode) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      };
+
+      const handleLogin = (e) => {
+        e.preventDefault();
+        if (password === 'proflolothebest') {
+          setIsAuthenticated(true);
+          setError('');
+        } else {
+          setError(t[language].error);
+        }
+      };
+
+      if (!isAuthenticated) {
+        return (
+          <div className="flex-grow flex items-center justify-center p-4 bg-gray-50 dark:bg-bcg-darkbg">
+             <div className="absolute top-4 right-6 flex gap-4">
+                 <button onClick={() => setLanguage(lang => lang === 'zh' ? 'en' : 'zh')} className="text-xs font-bold text-gray-500 hover:text-bcg dark:text-gray-400 dark:hover:text-white transition-colors uppercase tracking-widest">
+                   {language === 'zh' ? 'EN' : '繁中'}
+                 </button>
+                 <div className="w-px h-4 bg-gray-300 dark:bg-gray-700"></div>
+                 <button onClick={toggleTheme} className="text-gray-500 hover:text-bcg dark:text-gray-400 dark:hover:text-white transition-colors">
+                   {darkMode ? <IconSun /> : <IconMoon />}
+                 </button>
+             </div>
+
+            <div className="w-full max-w-sm bg-white dark:bg-bcg-carddark p-8 rounded border border-gray-200 dark:border-gray-800 shadow-sm">
+              <div className="flex flex-col items-center mb-8">
+                <div className="bg-bcg text-white p-2 rounded mb-4">
+                   <IconLogo />
+                </div>
+                <h1 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">{t[language].title}</h1>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                      <IconLock />
+                    </div>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={t[language].placeholder}
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md leading-5 bg-white dark:bg-gray-800 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-bcg focus:border-bcg dark:text-white sm:text-sm transition-colors"
+                    />
+                  </div>
+                  {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>}
+                </div>
+                <button
+                  type="submit"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-bcg hover:bg-bcg-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bcg transition-colors"
+                >
+                  {t[language].submit}
+                </button>
+              </form>
+            </div>
+          </div>
+        );
+      }
+
+      return <EvaluationApp language={language} toggleTheme={toggleTheme} darkMode={darkMode} setLanguage={setLanguage} />;
     };
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
